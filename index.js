@@ -1,9 +1,16 @@
 const puppeteer = require('puppeteer');
 const $ = require('cheerio');
 const CronJob = require('cron').CronJob;
+const path = require('path');
+const opn = require('opn');
 const nodemailer = require('nodemailer');
+const NodeCache = require( "node-cache" );
+const notifier = require('node-notifier');
+const Cache = new NodeCache();
+Cache.set('lowestPrice', 0);
 
-const url = 'https://www.amazon.com/Sony-Noise-Cancelling-Headphones-WH1000XM3/dp/B07G4MNFS1/';
+var myArgs = process.argv.slice(2);
+let url = myArgs[0];
 
 async function configureBrowser() {
     const browser = await puppeteer.launch();
@@ -17,14 +24,30 @@ async function checkPrice(page) {
     let html = await page.evaluate(() => document.body.innerHTML);
     // console.log(html);
 
-    $('#priceblock_dealprice', html).each(function() {
+    $('#priceblock_ourprice', html).each(function() {
         let dollarPrice = $(this).text();
-        // console.log(dollarPrice);
-        let currentPrice = Number(dollarPrice.replace(/[^0-9.-]+/g,""));
-
-        if (currentPrice < 300) {
+        let currentPrice = Number(dollarPrice.replace(/[^0-9.-]/g,""));
+        if(Cache.get('lowestPrice') == 0) {
+          Cache.set('lowestPrice', currentPrice);
+        }
+        else {
+          if (currentPrice < Cache.get('lowestPrice')) {
+            Cache.set('lowestPrice', currentPrice);
             console.log("BUY!!!! " + currentPrice);
-            sendNotification(currentPrice);
+            sendMail(dollarPrice);
+            notifier.notify({
+              title: 'Price Drop Alert !',
+              message: 'Price dropped to '+dollarPrice+' for '+url,
+              icon: path.join(__dirname, 'amazon.png'), 
+              sound: true,
+              wait: true,
+              actions: ['Open', 'Cancel']
+            });
+            notifier.on('open', () => {
+              console.log('"Ok" was pressed');
+              opn(url);
+            });
+          }
         }
     });
 }
@@ -38,7 +61,7 @@ async function startTracking() {
     job.start();
 }
 
-async function sendNotification(price) {
+async function sendMail(price) {
 
     let transporter = nodemailer.createTransport({
       service: 'gmail',
