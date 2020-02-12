@@ -34,7 +34,7 @@ async function checkPrice(page) {
           if (currentPrice < Cache.get('lowestPrice')) {
             Cache.set('lowestPrice', currentPrice);
             console.log("BUY!!!! " + currentPrice);
-            // sendMail(currentPrice);
+            sendMail(dollarPrice);
             notifier.notify({
               title: 'Price Drop Alert !',
               message: 'Price dropped to '+dollarPrice+' for '+url,
