@@ -1,5 +1,5 @@
 const puppeteer = require('puppeteer');
-const $ = require('cheerio');
+const $ = require('cheerio').load('');
 const CronJob = require('cron').CronJob;
 const nodemailer = require('nodemailer');
 
